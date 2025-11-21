@@ -32,6 +32,34 @@ const BookingSchema = Yup.object().shape({
   time: Yup.string().required("Time is required"),
 });
 
+// Helper function to convert selected date/time to IST
+const toIST = (date: Date) => {
+  const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+  const istDate = new Date(utc + 5.5 * 60 * 60 * 1000);
+  return istDate;
+};
+
+// Format date as DD-MM-YYYY
+const formatDate = (date: Date) => {
+  const d = toIST(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+// Format time as HH:MM
+// Format time as 12-hour HH:MM AM/PM
+const formatTime = (date: Date) => {
+  const d = toIST(date);
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12; // handle midnight/noon
+  return `${String(hours).padStart(2, "0")}:${minutes} ${ampm}`;
+};
+
 const BookingFormScreen = () => {
   const router: any = useRouter();
   const params = useLocalSearchParams();
@@ -85,6 +113,8 @@ const BookingFormScreen = () => {
     }
   };
 
+  const now = new Date();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -99,7 +129,11 @@ const BookingFormScreen = () => {
             <Text style={styles.title}>Book {service.name}</Text>
 
             <Formik
-              initialValues={{ date: "", time: "", notes: "" }}
+              initialValues={{
+                date: formatDate(now),
+                time: formatTime(now),
+                notes: "",
+              }}
               validationSchema={BookingSchema}
               onSubmit={handleSubmitBooking}
             >
@@ -121,6 +155,7 @@ const BookingFormScreen = () => {
                     inputStyle={{ color: "white" }}
                   />
 
+                  {/* Date Picker */}
                   <View>
                     <Text style={styles.label}>Date</Text>
                     <TouchableOpacity
@@ -138,21 +173,22 @@ const BookingFormScreen = () => {
 
                   {showDatePicker && (
                     <DateTimePicker
-                      value={values.date ? new Date(values.date) : new Date()}
+                      value={now}
                       mode="date"
                       display={Platform.OS === "ios" ? "spinner" : "default"}
+                      textColor="white" // iOS
+                      accentColor={PRIMARY} // Android
+                      themeVariant="dark" // Android
                       onChange={(event, selectedDate) => {
                         setShowDatePicker(false);
                         if (selectedDate) {
-                          setFieldValue(
-                            "date",
-                            selectedDate.toISOString().split("T")[0]
-                          );
+                          setFieldValue("date", formatDate(selectedDate));
                         }
                       }}
                     />
                   )}
 
+                  {/* Time Picker */}
                   <View>
                     <Text style={styles.label}>Time</Text>
                     <TouchableOpacity
@@ -170,25 +206,16 @@ const BookingFormScreen = () => {
 
                   {showTimePicker && (
                     <DateTimePicker
-                      value={
-                        values.time
-                          ? new Date(`1970-01-01T${values.time}:00`)
-                          : new Date()
-                      }
+                      value={now}
                       mode="time"
                       display={Platform.OS === "ios" ? "spinner" : "default"}
+                      textColor="white"
+                      accentColor={PRIMARY}
+                      themeVariant="dark"
                       onChange={(event, selectedTime) => {
                         setShowTimePicker(false);
                         if (selectedTime) {
-                          const hh = String(selectedTime.getHours()).padStart(
-                            2,
-                            "0"
-                          );
-                          const mm = String(selectedTime.getMinutes()).padStart(
-                            2,
-                            "0"
-                          );
-                          setFieldValue("time", `${hh}:${mm}`);
+                          setFieldValue("time", formatTime(selectedTime));
                         }
                       }}
                     />
